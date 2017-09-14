@@ -25,7 +25,7 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 
 // Simple auth endpoint
-app.post('/auth', function (req, res) {
+app.post('/login', function (req, res) {
     // Pull username/password from POST body
     let postData = { 
         username: req.body.username, 
@@ -74,8 +74,8 @@ app.post('/auth', function (req, res) {
 
 // Serve our static login page
 app.get('/sign_in', function (req, res) {
-  res.status(501);
-  res.send('Hello, User!')
+  //res.status(501);
+  res.sendFile(path.join(__dirname + '/index.html'));
 });
 
 // Clear session info
