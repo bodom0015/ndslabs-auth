@@ -8,32 +8,20 @@ ARG version="1.0.13"
 
 # Set up necessary environment variables
 ENV DEBIAN_FRONTEND="noninteractive" \
-    TERM="xterm" \
-    NODE_ENV="production" \
-    BASEDIR="/home"
+    TERM="xterm"
 
 # Copy in the manifests and the app source
-WORKDIR $BASEDIR
-VOLUME $BASEDIR
-COPY . $BASEDIR/
+WORKDIR /app
+COPY package.json /app
 
-# Update build date / version number and enable backports
-#RUN /bin/sed -i -e "s#^\.constant('BuildVersion', '.*')#.constant('BuildVersion', '${version}')#" "$BASEDIR/app/app.js" && \
-#    /bin/sed -i -e "s#^\.constant('BuildDate', .*)#.constant('BuildDate', new Date('$(date)'))#" "$BASEDIR/app/app.js" && \ 
-#    echo 'deb http://http.debian.net/debian jessie-backports main' >> /etc/apt/sources.list
+# Install dependencies
+RUN npm install
 
-# Set up some default environment variable
-#ENV APISERVER_HOST="localhost" \
-#    APISERVER_PORT="443" \
-#    APISERVER_PATH="/api" \
-#    APISERVER_SECURE="true" \
-#    ANALYTICS_ACCOUNT="" \
-#    SUPPORT_EMAIL="ndslabs-support@nationaldataservice.org"
+COPY server.js Dockerfile /app/
+COPY static/ /app/static
 
 # Expose port 3000 for ExpressJS
 EXPOSE 3000
-
-RUN npm install
 
 # The command to run our app when the container is run
 CMD [ "node", "server.js" ]
