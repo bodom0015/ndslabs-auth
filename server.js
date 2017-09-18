@@ -4,19 +4,23 @@ const request = require('request');
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
+const cors = require('cors');
 
 // Our ExpressJS app
 const app = express();
-const port = 3000;
+const port = 8081;
 
 // Build up a Workbench API URL
 const apiProtocol = 'http:'
 const apiHost = process.env.NDSLABS_APISERVER_SERVICE_HOST || 'localhost';
-const apiPort = 30001;  //process.env.NDSLABS_APISERVER_SERVICE_PORT || '30001';
-const apiPath = '/api'; //process.env.NDSLABS_APISERVER_SERVICE_PATH || '/api';
-let apiUrl = apiProtocol + '//' + apiHost;
-if (apiPort) { apiUrl += ':' + apiPort }
-if (apiPath) { apiUrl += '/' + apiPath }
+const apiPort = process.env.NDSLABS_APISERVER_SERVICE_PORT || '30001';
+const apiPath = process.env.NDSLABS_APISERVER_SERVICE_PATH || '/api';
+let apiBase = apiProtocol + '//' + apiHost;
+if (apiPort) { apiBase += ':' + apiPort }
+if (apiPath) { apiBase += apiPath }
+
+// TODO: Restrict CORS
+app.use(cors());
 
 // Parse cookies into helpful structures for manipulation
 app.use(cookieParser());
@@ -25,7 +29,7 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 
 // Simple auth endpoint
-app.post('/login', function (req, res) {
+app.post('/cauth/login', function (req, res) {
     // Pull username/password from POST body
     let postData = { 
         username: req.body.username, 
@@ -34,7 +38,7 @@ app.post('/login', function (req, res) {
     
     // Configure our POST target
     let postOptions = { 
-        url: 'http://10.0.0.116:30001/api/authenticate', 
+        url: apiBase + '/authenticate', 
         method: 'POST', 
         body: JSON.stringify(postData),
         headers: {
@@ -73,21 +77,79 @@ app.post('/login', function (req, res) {
 });
 
 // Serve our static login page
-app.get('/sign_in', function (req, res) {
-  //res.status(501);
-  res.sendFile(path.join(__dirname + '/index.html'));
+app.get('/cauth/sign_in', function (req, res) {
+  res.sendFile(path.join(__dirname + '/static/login.html'));
+});
+
+// Check to see if the current user is logged in
+// NOTE: Current JWT secret is hostname (pod name) of apiserver
+// TODO: Will we need a mechanism to share JWT secret? ConfigMap?
+app.get('/cauth/auth', function(req, res) {
+    let token = req.cookies['token'];
+    console.log("Checking if valid: " + req.cookies);
+    http.get({ 
+        protocol: apiProtocol,
+        host: apiHost,
+        port: apiPort,
+        path: apiPath + '/check_token', 
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer ' + token
+        }
+    }, (resp) => {
+        const { statusCode } = resp;
+
+        let error;
+        if (statusCode >= 400) {
+          error = new Error('Request Failed.\n' +
+                            `Status Code: ${statusCode}`);
+        }
+        if (error) {
+          console.error(error.message);
+          // consume response data to free up memory
+          resp.resume();
+          res.sendStatus(200);
+          return;
+        }
+
+        resp.setEncoding('utf8');
+        let rawData = '';
+        resp.on('data', (chunk) => { rawData += chunk; });
+        resp.on('end', () => {
+          try {
+            console.log(rawData);
+            res.sendStatus(200);
+          } catch (e) {
+            console.error(e.message);
+            res.sendStatus(401);
+          }
+        });
+      }).on('error', (e) => {
+        console.error(`Got error: ${e.message}`);
+        res.sendStatus(401);
+      });
 });
 
 // Clear session info
-app.get('/logout', function (req, res) {
+app.get('/cauth/logout', function (req, res) {
+  // TODO: Delete session somehow?
+
   res.status(501);
   res.send('STUB: Session deleted!')
+  jwt.clear()
 });
+
 
 // Serve static files from ./static/ on disk
 app.use(express.static(path.join(__dirname, 'static')));
 
+// Catch-all for other pages, send to /sign_in
+app.get('/*', function(req, res) {
+  res.redirect('/sign_in');
+});
+
 // Start up our server
 app.listen(port, function () {
   console.log('Workbench Login API listening on port', port)
+  console.log('Connecting to Workbench API server at ' + apiBase);
 });
