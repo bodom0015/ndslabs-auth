@@ -11,10 +11,11 @@ const app = express();
 const port = 8081;
 
 // Build up a Workbench API URL
-const apiProtocol = 'http:'
-const apiHost = process.env.NDSLABS_APISERVER_SERVICE_HOST || 'localhost';
-const apiPort = process.env.NDSLABS_APISERVER_SERVICE_PORT || '30001';
-const apiPath = process.env.NDSLABS_APISERVER_SERVICE_PATH || '/api';
+// XXX: Remember to change these in /static/login.html when they change
+const apiProtocol = 'http:';
+const apiHost = '10.0.0.116';
+const apiPort = '30001';
+const apiPath = '/api';
 let apiBase = apiProtocol + '//' + apiHost;
 if (apiPort) { apiBase += ':' + apiPort }
 if (apiPath) { apiBase += apiPath }
@@ -29,7 +30,7 @@ app.use(cookieParser());
 app.use(bodyParser.json());
 
 // Simple auth endpoint
-app.post('/cauth/login', function (req, res) {
+app.post('/cauth/login', bodyParser.urlencoded({ extended: false }), function (req, res) {
     // Pull username/password from POST body
     let postData = { 
         username: req.body.username, 
@@ -53,12 +54,15 @@ app.post('/cauth/login', function (req, res) {
     
     // Send login request
     request(postOptions, function (error, response, responseBody) {
+        console.log("ERROR: ", error);
+        console.log("RESPONSE: ", response);
+        console.log("RESPONSE BODY: ", responseBody);
+
         let status = response && response.statusCode ? response.statusCode : 500;
         
         if (error || status >= 400) {
-            console.log('ERROR: failed to login -', status); // Print the error if one occurred 
-            res.status(status);
-            res.send("Login failed.\n");
+            console.log('ERROR: Failed to login -', status, error); // Print the error if one occurred 
+            res.sendStatus(status);
         } else {
             let body = JSON.parse(responseBody);
             
@@ -66,8 +70,7 @@ app.post('/cauth/login', function (req, res) {
                 // Attach token to response as a cookie
                 let cookieOpts = { domain: 'ndslabs.org' };
                 res.cookie('token', body.token, cookieOpts);
-                res.status(status);
-                res.send("OK\n");
+                res.sendStatus(status);
             } else {
                 res.status(500);
                 res.send("No token was provided.");
@@ -85,8 +88,14 @@ app.get('/cauth/sign_in', function (req, res) {
 // NOTE: Current JWT secret is hostname (pod name) of apiserver
 // TODO: Will we need a mechanism to share JWT secret? ConfigMap?
 app.get('/cauth/auth', function(req, res) {
+    // No token? Denied.
     let token = req.cookies['token'];
-    console.log("Checking if valid: " + req.cookies);
+    if (!token) {
+        res.sendStatus(401);
+        return;
+    }
+
+    // If token was given, check that it's valid
     http.get({ 
         protocol: apiProtocol,
         host: apiHost,

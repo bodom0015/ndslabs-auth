@@ -20,8 +20,8 @@ RUN npm install
 COPY server.js Dockerfile /app/
 COPY static/ /app/static
 
-# Expose port 3000 for ExpressJS
-EXPOSE 3000
+# Expose port for ExpressJS
+EXPOSE 8081
 
 # The command to run our app when the container is run
 CMD [ "node", "server.js" ]
