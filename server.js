@@ -11,10 +11,9 @@ const app = express();
 const port = 8081;
 
 // Build up a Workbench API URL
-// XXX: Remember to change these in /static/login.html when they change
-const apiProtocol = 'http:';
-const apiHost = '10.0.0.116';
-const apiPort = '30001';
+const apiProtocol = 'http:'; // HTTP, since this isn't going through the loadbalancer
+const apiHost = process.env.NDSLABS_APISERVER_SERVICE_HOST || 'localhost';
+const apiPort = process.env.NDSLABS_APISERVER_SERVICE_PORT || '';
 const apiPath = '/api';
 let apiBase = apiProtocol + '//' + apiHost;
 if (apiPort) { apiBase += ':' + apiPort }

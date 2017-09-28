@@ -2,31 +2,22 @@
 <html ng-app="ndslabs-login">
   <head>
     <title>Workbench SSO Example</title>
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.11/angular.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.11/angular-route.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.11/angular-cookies.js"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.5.11/angular-resource.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.11/angular.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.11/angular-route.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.11/angular-cookies.js"></script>
+    <script src="//ajax.googleapis.com/ajax/libs/angularjs/1.5.11/angular-resource.js"></script>
 
     <script>
-      // Build up API base URL
-      // XXX: Remember to change these in /server.js when they change
-      const apiProtocol = 'https:'
-      const apiHost = 'www.mldev.ndslabs.org';
-      const apiPort = '';
-      const apiPath = '';
-      let apiBase = apiProtocol + '//' + apiHost;
-      if (apiPort) { apiBase += ':' + apiPort }
-      if (apiPath) { apiBase += apiPath }
-
-      // Now declare our login module
       angular
         .module("ndslabs-login", ['ngRoute'])
-        .controller("LoginController", ['$scope', '$http', '$window', function($scope, $http, $window) {
+        .controller("LoginController", ['$scope', '$http', function($scope, $http) {
           $scope.username = '';
           $scope.password = '';
+          $scope.errorMessage = '';
+
           $scope.submit = function() {
             console.log("Submitting...");
-            $http.post(apiBase + '/cauth/login', { username: $scope.username, password: $scope.password })
+            $http.post('/cauth/login', { username: $scope.username, password: $scope.password })
               .then(function(response) {
                 console.log("OK: ", response);
                 console.log("Now redirecting...");
@@ -34,7 +25,9 @@
                 // TODO: Use $window instead
                 window.location.replace("/");
               }, function(err) {
-               console.log("ERROR: ", err);
+                $scope.password = '';
+                $scope.errorMessage = 'Invalid password.';
+                console.log("ERROR: ", err);
               });
           };
         }]);
@@ -51,6 +44,9 @@
     
       <button type="submit" ng-click="submit()">Login</button>
     </ng-form>
+    <div style="color:red;" ng-if="errorMessage">
+      {{ errorMessage }}
+    </div>
   </body>
 </html>
 
